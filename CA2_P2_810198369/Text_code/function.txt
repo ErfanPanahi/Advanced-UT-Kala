@@ -1,0 +1,706 @@
+#include <stdio.h>
+#include "library_struct.h"
+char* get_string1(char *str) {
+	char ch;
+	int j;
+	for (j = 0;; j++) {
+		scanf("%c", &ch);
+		if (ch == ' ') {
+			break;
+		}
+		if (ch == '\n') {//for some input that finished just finishes by space
+			printf("incorrect order!\n");
+			return NULL;
+		}
+		str = (char*)realloc(str, (j + 2));
+		*(str + j) = ch;
+	}
+	*(str + j) = NULL;
+	fflush(stdin);
+	return str;
+}
+char* get_string2(char *str) {
+	char ch;
+	int j;
+	for (j = 0;; j++) {
+		scanf("%c", &ch);
+		if (ch == ' '||ch == '\n') {
+			break;
+		}
+		str = (char*)realloc(str, (j + 2));
+		*(str + j) = ch;
+	}
+	*(str + j) = NULL;
+	fflush(stdin);
+	return str;
+}
+struct user new_user(void) {//this function puts inputs in a temp structure and returns
+	struct user temp;
+	char*name = (char*)malloc(sizeof(char));
+	char*pass = (char*)malloc(sizeof(char));
+	char*role = (char*)malloc(sizeof(char));
+	name = get_string1(name);
+	temp.username = name;
+	if (name == NULL)return temp;
+	pass = get_string1(pass);
+	temp.password = pass;
+	if (pass == NULL)return temp;
+	role = get_string2(role);
+	temp.role = role;
+	return temp;
+}
+user signup(user*account,user temp) {
+	user*state = account;
+	while (1) {
+		if (account->next == NULL) {
+			account->next = (user*)malloc(sizeof(user));
+			account->next->goods = (goods*)malloc(sizeof(goods));
+			account->next->username = temp.username;
+			account->next->password = temp.password;
+			account->next->role = temp.role;
+			account->next->balance = 0;
+			account->next->goods->next = NULL;
+			account->next->next = NULL;
+			account = state;
+			users_file(account);
+			printf("signup was successful.\n");
+			return;
+		}
+		else if (!strcmp(account->next->username, temp.username)&& !strcmp(account->next->role, temp.role)) {//No repeated same role account
+			printf("This username has already been used.\n");
+			account = state;
+			return;
+		}
+		account = account->next;
+	}
+}
+user* check_login(user*account, user temp) {//check the existing of this username and ...
+	while (account->next != NULL) {
+		if (!strcmp(account->next->role, temp.role)) {
+			if (!strcmp(account->next->username, temp.username)) {
+				if (!strcmp(account->next->password, temp.password)) {
+					printf("login was successful.\n");
+					return account->next;
+				}
+				else {
+					printf("incorrect password!\n");
+					return NULL;
+				}
+			}
+		}
+		account = account->next;
+	}
+	printf("you must signup with this username at first.\n");
+	return NULL;
+}
+user* deposit(user*online_acc) {
+	char* charge = (char*)malloc(sizeof(char));
+	charge = get_string2(charge);
+	if (atoi(charge) < 0) {
+		printf("your input is not currect!\n");
+		return online_acc;
+	}
+	online_acc->balance += atoi(charge);
+	printf("deposit was successful.\n");
+	return online_acc;
+}
+int view(user*online_acc) {
+	goods*state = online_acc->goods;
+	printf("username:\t%s\n", online_acc->username);
+	printf("role:\t%s\n", online_acc->role);
+	printf("balance:\t%d\n", online_acc->balance);
+	while (online_acc->goods->next != NULL) {
+		printf("%s\t%d\t%d\t", online_acc->goods->next->goods_name, online_acc->goods->next->goods_price, online_acc->goods->next->goods_count);
+		if (!strcmp(online_acc->role, "buyer"))
+			printf("%s", online_acc->goods->next->seller_name);
+		printf("\n");
+		online_acc->goods = online_acc->goods->next;
+	}
+	online_acc->goods = state;
+	return;
+}
+goods new_goods(void) {//this function puts inputs in a temp structure and returns
+	char *name = (char*)malloc(sizeof(char));
+	char *price = (char*)malloc(sizeof(char));
+	char *count = (char*)malloc(sizeof(char));
+	struct goods temp;
+	name = get_string1(name);
+	temp.goods_name = name;
+	if (name == NULL)return temp;
+	price = get_string1(price);
+	temp.goods_price = atoi(price);
+	if (price == NULL)return temp;
+	count = get_string2(count);
+	temp.goods_count = atoi(count);
+	return temp;
+}
+user add_goods(user*online_acc, goods*goods) {
+	struct goods temp, *state;
+	struct goods*state2 = goods;
+	state = online_acc->goods;
+	temp = new_goods();
+	if (temp.goods_name == NULL || temp.goods_price == NULL)return;
+	if (temp.goods_count < 0 || temp.goods_price < 0)
+		printf("incorrect input!\n");
+	else {
+		while (1) {
+			if (goods->next == NULL||strcmp(goods->next->goods_name, temp.goods_name) > 0 )//if the good was not repeated this order shows sort inserting nude 
+				break;
+			else if (!strcmp(goods->next->goods_name, temp.goods_name)) {//finding good
+				if (!strcmp(goods->next->seller_name, online_acc->username)) {//if the online account have already added this good ...
+					if (goods->next->goods_price == temp.goods_price) {
+						goods->next->goods_count += temp.goods_count;
+						while (1) {
+							if (!strcmp(online_acc->goods->next->goods_name, temp.goods_name)) {
+								online_acc->goods->next->goods_count += temp.goods_count;
+								printf("you have added %d numbers to your goods.\n", temp.goods_count);
+								online_acc->goods = state;
+								return;
+							}
+							online_acc->goods = online_acc->goods->next;
+						}
+					}
+					else {
+						printf("you have added this good with another price.\n");
+						return;
+					}
+				}
+				else {
+					printf("another seller has added this goods.\n");
+					return;
+				}
+			}
+			goods = goods->next;
+		}
+		struct goods*newgoods = (struct goods*)malloc(sizeof(struct goods));
+		newgoods->goods_name = temp.goods_name;
+		newgoods->goods_price = temp.goods_price;
+		newgoods->goods_count = temp.goods_count;
+		newgoods->seller_name = online_acc->username;
+		newgoods->ave_rate = 0;
+		newgoods->rater_count = 0;
+		newgoods->salable = 1;
+		newgoods->next = goods->next;
+		goods->next = newgoods;
+		struct goods*newgoods_seller = (struct goods*)malloc(sizeof(struct goods));
+		newgoods_seller->goods_name = temp.goods_name;
+		newgoods_seller->goods_price = temp.goods_price;
+		newgoods_seller->goods_count = temp.goods_count;
+		newgoods_seller->rater_count = 0;
+		newgoods_seller->next = online_acc->goods->next;
+		online_acc->goods->next = newgoods_seller;
+		printf("your goods added successfully.\n");
+		goods = state2;
+	}
+}
+int show_goods(goods* goods) {
+	if (goods->next == NULL) {
+		printf("no goods yet!\n");
+		return;
+	}
+	while (goods->next != NULL) {
+		if (goods->next->salable)
+			printf("%s\t%d\t%d\t%s\t%.3f(count of rating: %.0f)\n", goods->next->goods_name, goods->next->goods_price, goods->next->goods_count, goods->next->seller_name, goods->next->ave_rate, goods->next->rater_count);
+		goods = goods->next;
+	}
+}
+struct goods new_buy(void) {//this function puts inputs in a temp structure and returns
+	char *name = (char*)malloc(sizeof(char));
+	char *count = (char*)malloc(sizeof(char));
+	char *seller = (char*)malloc(sizeof(char));
+	struct goods temp;
+	name = get_string1(name);
+	temp.goods_name = name;
+	if (name == NULL)return temp;
+	count = get_string1(count);
+	temp.goods_count = atoi(count);
+	if (count == NULL)return temp;
+	seller = get_string2(seller);
+	temp.seller_name = seller;
+	return temp;
+}
+user buy(user*account, user*online_acc, goods*goods) {
+	struct goods temp;
+	temp = new_buy();
+	if (temp.goods_name == NULL || temp.goods_price == NULL)return;
+	while (account->next != NULL) {
+		if (!strcmp(temp.seller_name, account->next->username)&& !strcmp(account->next->username,"seller" )) {
+			break;
+		}
+		account = account->next;
+	}
+	struct goods*state = account->next->goods;
+	struct goods*state2 = goods;
+	struct goods*state3 = online_acc->goods;
+	if (temp.goods_count < 0) {
+		printf("incorrect count!\n");
+		return;
+	}
+	else {
+		while (goods->next != NULL) {
+			if (!strcmp(temp.goods_name, goods->next->goods_name)) {//finding good
+				temp.goods_price = goods->next->goods_price;
+				if (!strcmp(temp.seller_name, goods->next->seller_name)) {
+					if (temp.goods_count <= goods->next->goods_count) {
+						if (temp.goods_count*temp.goods_price <= online_acc->balance) {
+							if (goods->next->salable) {
+								while (online_acc->goods->next != NULL) {
+									if (!strcmp(online_acc->goods->next->goods_name, temp.goods_name)) {//if the online account have alreadu bought this good ...
+										online_acc->goods->next->goods_count += temp.goods_count;
+										online_acc->balance -= temp.goods_count*temp.goods_price;
+										goods->next->goods_count -= temp.goods_count;
+										account->next->balance += temp.goods_count*temp.goods_price;
+										while (account->next->goods->next != NULL) {
+											if (!strcmp(temp.goods_name, account->next->goods->next->goods_name)) {
+												account->next->goods->next->goods_count -= temp.goods_count;
+												printf("buying was successfully.\n");
+												goods = state2;
+												account->next->goods = state;
+												return;
+											}
+											account->next->goods = account->next->goods->next;
+										}
+									}
+									online_acc->goods = online_acc->goods->next;
+								}
+								online_acc->goods = state3;
+								struct goods* newbuy = (struct goods*)malloc(sizeof(struct goods));//if the online account buy this good for the first time
+								newbuy->goods_name = temp.goods_name;
+								newbuy->goods_price = temp.goods_price;
+								newbuy->goods_count = temp.goods_count;
+								newbuy->seller_name = temp.seller_name;
+								newbuy->next = online_acc->goods->next;
+								online_acc->goods->next = newbuy;
+								online_acc->balance -= temp.goods_count*temp.goods_price;
+								goods->next->goods_count -= temp.goods_count;
+								account->next->balance += temp.goods_count*temp.goods_price;
+								while (account->next->goods->next != NULL) {
+									if (!strcmp(temp.goods_name, account->next->goods->next->goods_name)) {
+										account->next->goods->next->goods_count -= temp.goods_count;
+										printf("buying was successfully.\n");
+										goods = state2;
+										account->next->goods = state;
+										return;
+									}
+									account->next->goods = account->next->goods->next;
+								}
+							}
+							else {
+								printf("this goods is not for selling!because its average ratings is less than 2.\n");
+								goods = state2;
+								account->next->goods = state;
+								return;
+							}
+						}
+						else {
+							printf("your balance is not enough.\n");
+							goods = state2;
+							account->next->goods = state;
+							return;
+						}
+					}
+					else {
+						printf("there are not enough goods for you.\n");
+						goods = state2;
+						account->next->goods = state;
+						return;
+					}
+				}
+				else {
+					printf("this goods is for %s.\n", goods->next->seller_name);
+					goods = state2;
+					account->next->goods = state;
+					return;
+				}
+			}
+			goods = goods->next;
+		}
+	}
+	goods = state2;
+	account->goods = state;
+	printf("this goods does not exist.\n");
+}
+user remove_goods(user*online_acc, goods* goods) {
+	char* goods_name = (char*)malloc(sizeof(char));
+	goods_name = get_string2(goods_name);
+	struct goods* temp,*state1,*state2;
+	state1 = goods;
+	state2 = online_acc->goods;
+	while (goods->next != NULL) {
+		if (!strcmp(goods->next->goods_name, goods_name)) {//finding good
+			while (online_acc->goods->next != NULL) {
+				if (!strcmp(online_acc->goods->next->goods_name, goods_name)) {//if the online account is seller of this good
+					temp = goods->next;
+					goods->next = goods->next->next;
+					free(temp);
+					temp = online_acc->goods->next;
+					online_acc->goods->next = online_acc->goods->next->next;
+					free(temp);
+					goods = state1;
+					online_acc->goods = state2;
+					printf("'%s' removed successfully.\n",goods_name);
+					return;
+				}
+				online_acc->goods = online_acc->goods->next;
+			}
+			printf("this goods is not for you!\n");
+			goods = state1;
+			online_acc->goods = state2;
+			return;
+		}
+		goods = goods->next;
+	}
+	printf("this goods does not exist!\n");
+	goods = state1;
+	online_acc->goods = state2;
+	return;
+}
+goods new_change(void) {//this function puts inputs in a temp structure and returns
+	char* goods_name = (char*)malloc(sizeof(char));
+	char* new_price = (char*)malloc(sizeof(char));
+	struct goods temp;
+	goods_name = get_string1(goods_name);
+	temp.goods_name = goods_name;
+	if (goods_name == NULL)return temp;
+	new_price = get_string2(new_price);
+	temp.goods_price = atoi(new_price);
+	return temp;
+}
+user change_goods_price(user* online_acc, goods* goods) {
+	struct goods temp, *state1, *state2;
+	temp = new_change();
+	if (temp.goods_name == NULL)return;
+	if (temp.goods_price < 0) {
+		printf("incorrect price!\n");
+		return;
+	}
+	state1 = goods;
+	state2 = online_acc->goods;
+	while (goods->next != NULL) {
+		if (!strcmp(goods->next->goods_name, temp.goods_name)) {//finding good
+			while (online_acc->goods->next != NULL) {
+				if (!strcmp(online_acc->goods->next->goods_name, temp.goods_name)) {//chech that online account is seller of this good
+					goods->next->goods_price = temp.goods_price;
+					online_acc->goods->next->goods_price = temp.goods_price;
+					goods = state1;
+					online_acc->goods = state2;
+					printf("price of '%s' changed successfully.\n", temp.goods_name);
+					return;
+				}
+				online_acc->goods = online_acc->goods->next;
+			}
+			printf("this goods is not for you!\n");
+			goods = state1;
+			online_acc->goods = state2;
+			return;
+		}
+		goods = goods->next;
+	}
+	printf("this goods does not exist!\n");
+	goods = state1;
+	online_acc->goods = state2;
+	return;
+}
+goods new_rate(void) {//this function puts inputs in a temp structure and returns
+	char *goods_name = (char*)malloc(sizeof(char));
+	char *seller_name = (char*)malloc(sizeof(char));
+	char *rating = (char*)malloc(sizeof(char));
+	struct goods temp;
+	goods_name = get_string1(goods_name);
+	temp.goods_name = goods_name;
+	if (goods_name == NULL)return temp;
+	seller_name = get_string1(seller_name);
+	temp.seller_name = seller_name;
+	if (seller_name == NULL)return temp;
+	rating = get_string2(rating);
+	temp.ave_rate = atoi(rating);
+	return temp;
+}
+user rate_goods(user*online_acc, goods*goods) {
+	struct goods temp, *state1, *state2;
+	state1 = online_acc->goods;
+	state2 = goods;
+	temp = new_rate();
+	if (temp.goods_name == NULL || temp.seller_name == NULL)return;
+	if (temp.ave_rate != 1 && temp.ave_rate != 2 && temp.ave_rate != 3 && temp.ave_rate != 4 && temp.ave_rate != 5) {
+		printf("incorrect rate!(rate: 1-2-3-4-5)\n");
+		return;
+	}
+	while (goods->next != NULL) {
+		if (!strcmp(goods->next->goods_name, temp.goods_name)) {
+			while (online_acc->goods->next != NULL) {
+				if (!strcmp(online_acc->goods->next->goods_name, temp.goods_name)) {
+					if (!strcmp(goods->next->seller_name, temp.seller_name)) {
+						if (online_acc->goods->next->rater_count!=-1) {
+							float sum;
+							sum = goods->next->rater_count*goods->next->ave_rate + temp.ave_rate;
+							goods->next->rater_count++;
+							goods->next->ave_rate = sum / goods->next->rater_count;
+							online_acc->goods->next->rater_count = -1;
+							if (goods->next->rater_count >= 5) {
+								if (goods->next->ave_rate < 2)//unsalable
+									goods->next->salable = 0;
+								else
+									goods->next->salable = 1;
+							}
+							online_acc->goods = state1;
+							goods = state2;
+							printf("rating was successfull.\n");
+							return;
+						}
+						else {
+							online_acc->goods = state1;
+							goods = state2;
+							printf("you have already rated this goods!\n");
+							return;
+						}
+					}
+					else {
+						online_acc->goods = state1;
+						goods = state2;
+						printf("this goods is for %s!\n", goods->next->seller_name);
+						return;
+					}
+				}
+				online_acc->goods = online_acc->goods->next;
+			}
+			online_acc->goods = state1;
+			goods = state2;
+			printf("you can not rate this goods!beacause you have not bought that.\n");
+			return;
+		}
+		goods = goods->next;
+	}
+	online_acc->goods = state1;
+	goods = state2;
+	printf("this goods does not exist!\n");
+	return;
+}
+user search(goods* goods) {
+	struct goods*state = goods;
+	char *num_str = (char*)malloc(sizeof(char));
+	num_str = get_string2(num_str);//number of conditions
+	int num;
+	num = atoi(num_str);
+	if (num != 1 && num != 2 && num != 3 && num != 4) {
+		printf("incorrect number for conditions!(number: 1-2-3-4)\n");
+		return;
+	}
+	char *name = NULL, *seller_username = NULL;
+	int max_price = NULL, min_price = NULL;
+	for (int i = 0; i < num; i++) {
+		char *goods_attribute = (char*)malloc(sizeof(char));
+		char *attribute_value = (char*)malloc(sizeof(char));
+		goods_attribute = get_string1(goods_attribute);
+		if (goods_attribute == NULL)return;
+		attribute_value = get_string2(attribute_value);
+		if (!strcmp(goods_attribute, "name"))
+			name = attribute_value;
+		else if (!strcmp(goods_attribute, "seller_username")) 
+			seller_username = attribute_value;
+		else if (!strcmp(goods_attribute, "max_price"))
+			max_price = atoi(attribute_value);
+		else if (!strcmp(goods_attribute, "min_price")) 
+			min_price = atoi(attribute_value);
+		else {
+			printf("incorrect attribute!enter another:\n");
+			i--;
+		}
+	}
+	while (goods->next != NULL) {
+		if (name == NULL || !strcmp(name, goods->next->goods_name)) 
+			if (seller_username == NULL || !strcmp(seller_username, goods->next->seller_name)) 
+				if (max_price == NULL || goods->next->goods_price <= max_price) 
+					if (min_price == NULL || goods->next->goods_price >= min_price) {
+						if (goods->next->salable) {
+							printf("%s\t%d\t%d\t%s\t%.3f(count of rating: %.0f)\n", goods->next->goods_name, goods->next->goods_price, goods->next->goods_count, goods->next->seller_name, goods->next->ave_rate, goods->next->rater_count);
+							num = -1;
+						}
+					}
+		goods = goods->next;
+	}
+	if (num == -1)return;
+	printf("No goods found!\n");
+	goods = state;
+}
+user login(user* account, goods*goods, user temp) {
+	user* online_acc;
+	char* order;
+	online_acc = check_login(account, temp);
+	if (online_acc != NULL)
+		while (1) {
+			order = (char*)malloc(sizeof(char));
+			order = get_string2(order);
+			if (!strcmp(order, "logout")) {
+				printf("logout was successful.\n");
+				break;
+			}
+			else if (!strcmp(order, "deposit") && !strcmp(online_acc->role, "buyer"))
+				online_acc = deposit(online_acc);
+			else if (!strcmp(order, "view"))
+				view(online_acc);
+			else if (!strcmp(order, "add_goods") && !strcmp(online_acc->role, "seller"))
+				add_goods(online_acc, goods);
+			else if (!strcmp(order, "remove_goods") && !strcmp(online_acc->role, "seller"))
+				remove_goods(online_acc, goods);
+			else if (!strcmp(order, "change_goods_price") && !strcmp(online_acc->role, "seller"))
+				change_goods_price(online_acc, goods);
+			else if (!strcmp(order, "show_goods"))
+				show_goods(goods);
+			else if (!strcmp(order, "buy") && !strcmp(online_acc->role, "buyer"))
+				buy(account, online_acc, goods);
+			else if (!strcmp(order, "rate_goods") && !strcmp(online_acc->role, "buyer"))
+				rate_goods(online_acc, goods);
+			else if (!strcmp(order, "search"))
+				search(goods);
+			else {
+				printf("incorrect order!\n");
+				continue;
+			}
+			users_file(account);//updating the users file
+			goods_file(goods);//updating the goods file
+		}
+}
+user delete_file(char*add) {
+	FILE*users = fopen(add, "w");
+	fprintf(users,"",NULL);
+	fclose(users);
+}
+user users_file(user*account) {
+	user*state1 = account;
+	delete_file("users.txt");
+	FILE*users = fopen("users.txt", "a");
+	while (account->next != NULL) {//writing information og accounts in file
+		fprintf(users, "username:%s,", account->next->username);
+		fprintf(users, "password:%s,", account->next->password);
+		fprintf(users, "balance:%d,", account->next->balance);
+		fprintf(users, "role:%s", account->next->role);
+		user*state2 = account->next->goods;
+		while (account->next->goods->next != NULL) {//goods information of accounts
+			fprintf(users, ",goods_name:%s-", account->next->goods->next->goods_name);
+			fprintf(users, "price:%d-", account->next->goods->next->goods_price);
+			fprintf(users, "count:%d", account->next->goods->next->goods_count);
+			if (!strcmp(account->next->role, "buyer")) {
+				fprintf(users, "-seller:%s", account->next->goods->next->seller_name);
+				if (account->next->goods->next->rater_count == -1)fprintf(users, "-rate:%.0f", account->next->goods->next->rater_count);
+			}
+			account->next->goods = account->next->goods->next;
+		}
+		fprintf(users, "\n", NULL);
+		account->next->goods = state2;
+		account = account->next;
+	}
+	fclose(users);
+	account = state1;
+}
+goods goods_file(goods*goods) {
+	struct goods*state = goods;
+	delete_file("goods.txt");
+	FILE*goodsfile = fopen("goods.txt", "a");
+	while (goods->next != NULL) {//writting inforamtion of goods in file
+		fprintf(goodsfile, "name:%s,", goods->next->goods_name);
+		fprintf(goodsfile, "price:%d,", goods->next->goods_price);
+		fprintf(goodsfile, "count:%d,", goods->next->goods_count);
+		fprintf(goodsfile, "seller:%s,", goods->next->seller_name);
+		fprintf(goodsfile, "average_rating:%f,", goods->next->ave_rate);
+		fprintf(goodsfile, "rating_count:%f,", goods->next->rater_count);
+		fprintf(goodsfile, "salable:%d\n", goods->next->salable);
+		goods = goods->next;
+	}
+	fclose(goodsfile);
+	goods = state;
+}
+char* load_str(FILE*load_users) {//reading an string from the file
+	char *str = (char*)malloc(sizeof(char));
+	char ch = getc(load_users);
+	int i;
+	for (i = 0; ch != ','&&ch != '\n'&&ch != '-'; i++) {
+		str = (char*)realloc(str, (i + 1) * sizeof(char));
+		str[i] = ch;
+		ch = getc(load_users);
+	}
+	str[i] = NULL;
+	return str;
+}
+char* del_str(FILE*load_users) {//deleting the unusable information from the file
+	char ch = getc(load_users);
+	for (int i = 0; ch != ':'; i++)
+		ch = getc(load_users);
+}
+user load_user(user*account) {
+	user*state1 = account;
+	FILE*creat = fopen("users.txt", "a");
+	fclose(creat);
+	FILE*load_users = fopen("users.txt", "r");
+	char ch;
+	while (ch = getc(load_users) != EOF) {//loading informatin of the accounts from the file
+		account->next = (user*)malloc(sizeof(user));
+		account->next->goods = (goods*)malloc(sizeof(goods));
+		del_str(load_users);
+		account->next->username = load_str(load_users);
+		del_str(load_users);
+		account->next->password = load_str(load_users);
+		del_str(load_users);
+		account->next->balance = atoi(load_str(load_users));
+		del_str(load_users);
+		account->next->role = load_str(load_users);
+		account->next->next = NULL;
+		account->next->goods->next = NULL;
+		goods*state2 = account->next->goods;
+		ch = getc(load_users);
+		while (ch == 'g'||ch=='o') {//if this account had some goods(we check it with 2 first letter og goods_name 'g' and 'o')
+			account->next->goods->next = (goods*)malloc(sizeof(goods));
+			del_str(load_users);
+			account->next->goods->next->goods_name = load_str(load_users);
+			del_str(load_users);
+			account->next->goods->next->goods_price = atoi(load_str(load_users));
+			del_str(load_users);
+			account->next->goods->next->goods_count = atoi(load_str(load_users));
+			if (!strcmp(account->next->role, "buyer")) {
+				del_str(load_users);
+				account->next->goods->next->seller_name = load_str(load_users);
+				if (ch = getc(load_users) == 'r') {
+					del_str(load_users);
+					account->next->goods->next->rater_count = -1;
+					load_str(load_users);
+					load_str(load_users);
+				}
+			}
+			account->next->goods->next->next = NULL;
+			account->next->goods = account->next->goods->next;
+			ch = getc(load_users);
+		}
+		account->next->goods = state2;
+		account = account->next;
+	}
+	fclose(load_users);
+	account = state1;
+}
+goods load_goods(goods*all_goods) {//loading informatin of the goods from the file
+	struct goods*state = all_goods;
+	FILE*creat = fopen("goods.txt", "a");
+	fclose(creat);
+	char ch;
+	FILE*load_goods = fopen("goods.txt", "r");
+	while (ch = getc(load_goods) != EOF) {
+		all_goods->next = (struct goods*)malloc(sizeof(struct goods));
+		del_str(load_goods);
+		all_goods->next->goods_name= load_str(load_goods);
+		del_str(load_goods);
+		all_goods->next->goods_price = atoi(load_str(load_goods));
+		del_str(load_goods);
+		all_goods->next->goods_count = atoi(load_str(load_goods));
+		del_str(load_goods);
+		all_goods->next->seller_name = load_str(load_goods);
+		del_str(load_goods);
+		sscanf(load_str(load_goods),"%f",&all_goods->next->ave_rate);
+		del_str(load_goods);
+		all_goods->next->rater_count = atoi(load_str(load_goods));
+		del_str(load_goods);
+		all_goods->next->salable = atoi(load_str(load_goods));
+		all_goods->next->next = NULL;
+		all_goods = all_goods->next;
+	}
+	fclose(load_goods);
+	all_goods = state;
+}

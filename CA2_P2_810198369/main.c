@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "library_struct.h"
+int main() {
+	user* account = (user*)malloc(sizeof(user));
+	account->next = NULL;
+	goods* all_goods = (goods*)malloc(sizeof(goods));
+	all_goods->next = NULL;
+	struct user temp;
+	char* order;
+	load_user(account);//load recent users information by file
+	load_goods(all_goods);//load recent goods information by file
+	for (;;) {
+		order = (char*)malloc(sizeof(char));
+		order = get_string1(order);
+		if (order == NULL)continue;
+		temp = new_user();
+		if (temp.username == NULL || temp.password == NULL)continue;
+		if (strcmp(temp.role, "seller") && strcmp(temp.role, "buyer"))
+			printf("Invalid role.(seller-buyer)\n");
+		else if (!strcmp(order, "signup"))
+			signup(account, temp);
+		else if (!strcmp(order, "login")) {
+			login(account, all_goods, temp);
+		}
+		else
+			printf("incorrect order!\n");
+	}
+}
